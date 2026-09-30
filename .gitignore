@@ -1,0 +1,7 @@
+cared/config/*.env
+!cared/config/example.env
+cared/state/
+vitalcare/v223-upgrade/state/
+cared/**/inspect/
+*.log
+.DS_Store
