@@ -19,7 +19,7 @@ cd vitalcare/v223-upgrade
 - CPU / RAM / Disk
 - 실행 중인 docker compose 프로젝트
 - 외부망이 되면 ECR 로그인, ECR 통신, `vc-deploy` git 접근
-- 외부망이 안 되면 2.2.3 이미지, CloudBeaver 이미지, 로컬 최신 vc-script, `/home/aitrics/vc-deploy-v223`, NTP
+- 외부망이 안 되면 2.2.3 이미지, CloudBeaver 이미지, `dev/vc-script:v2.2.0`, `/home/aitrics/vc-deploy-v223`, NTP
 
 FAIL 이 있으면 종료 코드 1 이다.
 
@@ -46,12 +46,13 @@ FAIL 이 있으면 종료 코드 1 이다.
    - api 이면 `API_BASE_URL`, view 이면 `VCSYNC_EMR_*`
    - `envs/sync.env` 의 `VCSYNC_SYNC_DNR` 은 `true` 또는 `false` 로 묻는다.
 5. `restore-sync`, `restore-observer` 주석을 해제한다.
-6. sync 와 observer 를 제외하고 순서대로 올린다. mysql 은 healthy 가 된 뒤에 다음으로 넘어간다.
+6. compose 에 적힌 이미지와 CloudBeaver(`se-tools/cloudbeaver:26.2.0-r1`), vc-script(`dev/vc-script:v2.2.0`)를 먼저 맞춘다. 로컬에 있으면 pull 하지 않고, 없으면 pull 한다. `docker images`로 확인한 뒤에 컨테이너를 올린다.
+7. sync 와 observer 를 제외하고 순서대로 올린다. 컨테이너마다 1초를 쉬고, mysql 은 healthy 가 된 뒤에 다음으로 넘어간다.
    `mysql`, `sync-migration`, `backend-migration`, `rabbitmq`, `backend`, `frontend`, `admin`, `mongodb`, `vcsm-kotlin`, `dlq-manager`, `scoring-service`, `screening-service`
 
 ### script
 
-observer live (`observe run`), sync live (`sync`), 그다음 로컬에서 가장 최근 vc-script 이미지를 실행한다. MySQL 호스트 포트는 `3322` 다.
+observer live (`observe run`), sync live (`sync`), 그다음 `dev/vc-script:v2.2.0` 을 `--net=host --pid=host` 로 실행한다. MySQL 호스트 포트는 `3322` 다.
 
 ### fix-defect
 

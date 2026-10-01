@@ -34,7 +34,8 @@ db encryption key 입력할 때 비밀번호 입력처럼 하는 거 너무 불�
 [INFO] mysql-v223 healthy
 
 
-병원폴더 만들 때 v223 안붙여서 발생한 에러
+병원폴더 만들 때 v223 안붙여서 발생한 에러 -> 고쳤음
 WARN[0023] Found orphan containers ([restore-scoring-manager-v1.4.4-h2 himchan_mokdong-one-time-job-3-1 himchan_mokdong-one-time-job-2-1]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up.
 
 
+############### run initiate ####################

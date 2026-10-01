@@ -52,7 +52,7 @@ ${BOLD}VitalCare 2.2.3 업그레이드 사전점검 시뮬레이션${NC}
    불가능하다고 하면
      - 병원 폴더 docker-compose.yaml 과 include 에 적힌 이미지가 로컬에 있는지
      - CloudBeaver 이미지 ${CLOUDBEAVER_IMAGE}
-     - 로컬에 로드된 vc-script 중 가장 최근 이미지
+     - vc-script 이미지 ${VC_SCRIPT_IMAGE}
      - ${DEPLOY_HOME} 디렉터리가 있는지
      - timedatectl 기준으로 NTP 가 켜져 있는지
 
@@ -269,11 +269,10 @@ check_loaded_images() {
 
   echo
   echo "vc-script"
-  local script_image
-  if script_image="$(latest_vc_script_image)"; then
-    record_pass "로컬 최신 vc-script  ${script_image}"
+  if image_loaded "${VC_SCRIPT_IMAGE}"; then
+    record_pass "image  ${VC_SCRIPT_IMAGE}"
   else
-    record_fail "vc-script 이미지가 로컬에 없습니다."
+    record_fail "image 없음  ${VC_SCRIPT_IMAGE}"
   fi
 }
 

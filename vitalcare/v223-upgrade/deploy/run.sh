@@ -75,15 +75,20 @@ compose 가 ../mysql, ../vitalcare 를 include 하므로 폴더는 저장소 안
          view : VCSYNC_EMR_HOST, PORT, DB, SERVICE, USER, PASSWORD
        envs/sync.env  VCSYNC_SYNC_DNR (true 또는 false)
   6. docker-compose.yaml 의 restore-sync, restore-observer 주석을 해제한다.
-  7. sync 와 observer 는 띄우지 않고, 아래 순서대로 올린다.
+  7. 컨테이너를 올리기 전에 이미지를 먼저 맞춘다.
+       compose 에 적힌 이미지, CloudBeaver, vc-script.
+       docker images 에 있으면 pull 하지 않는다. 없으면 pull 한다.
+       전부 준비된 뒤에 docker images 를 보여주고, 그 다음 컨테이너를 올린다.
+  8. sync 와 observer 는 띄우지 않고, 아래 순서대로 올린다.
+       컨테이너를 하나 올린 뒤 1초 쉰다.
        mysql 은 healthy 가 된 뒤에 다음으로 넘어간다.
 $(printf '       - %s\n' "${UP_SERVICES[@]}")
 
 [script]
   1. observer 를 live 로 올린다.  compose 명령은 \`observe run\`
   2. sync 를 live 로 올린다.      compose 명령은 \`sync\`
-  3. 로컬에서 가장 최근 vc-script 이미지를 대화형으로 실행한다.
-       docker run -it --rm --name vc-script --net=host <vc-script 이미지>
+  3. vc-script 를 대화형으로 실행한다.
+       docker run -it --rm --name vc-script --net=host --pid=host ${VC_SCRIPT_IMAGE}
        DB host 127.0.0.1, DB port 3322 (mysql-v223)
 
 [fix-defect]
@@ -427,17 +432,49 @@ wait_oneshot() {
   return 1
 }
 
+prepare_images() {
+  local image
+  local -a images=()
+  log_step "이미지 준비"
+  if [[ ! -f "${STACK_DIR}/docker-compose.yaml" ]]; then
+    log_error "없습니다: ${STACK_DIR}/docker-compose.yaml"
+    exit 1
+  fi
+  COMPOSE_IMAGES=()
+  collect_images_from_file "${STACK_DIR}/docker-compose.yaml" "${STACK_DIR}/.env"
+  if [[ -f "${STACK_DIR}/docker-compose.override.yaml" ]]; then
+    collect_images_from_file "${STACK_DIR}/docker-compose.override.yaml" "${STACK_DIR}/.env"
+  fi
+  if [[ "${#COMPOSE_IMAGES[@]}" -eq 0 ]]; then
+    log_error "compose 파일에서 image 를 읽지 못했습니다."
+    exit 1
+  fi
+  images=("${COMPOSE_IMAGES[@]}" "${CLOUDBEAVER_IMAGE}" "${VC_SCRIPT_IMAGE}")
+  while IFS= read -r image; do
+    [[ -n "${image}" ]] || continue
+    if image_loaded "${image}"; then
+      log_info "로드됨  ${image}"
+    else
+      log_info "pull  ${image}"
+      docker pull "${image}"
+    fi
+  done < <(printf '%s\n' "${images[@]}" | awk 'NF && !seen[$0]++')
+  log_step "docker images"
+  docker images
+}
+
 up_service() {
   local svc="$1"
   local name
   name="$(container_name "${svc}")"
   log_step "${svc}  (${name})"
-  run_cmd compose up -d --no-deps "${svc}"
+  run_cmd compose up -d --no-deps --pull never "${svc}"
   case "${svc}" in
     mysql|rabbitmq) wait_healthy "${name}" ;;
     backend-migration|sync-migration) wait_oneshot "${name}" ;;
     *) wait_running "${name}" ;;
   esac
+  sleep 1
 }
 
 up_stack_without_sync() {
@@ -475,6 +512,7 @@ cmd_initiate() {
   prepare_certificates
   configure_env
   uncomment_restore
+  prepare_images
   up_stack_without_sync
   log_step "initiate 종료"
   log_info "작업 경로: ${STACK_DIR}"
@@ -485,8 +523,9 @@ up_live() {
   local svc
   for svc in observer sync; do
     log_step "${svc} live"
-    run_cmd compose up -d --no-deps "${svc}"
+    run_cmd compose up -d --no-deps --pull never "${svc}"
     wait_running "$(container_name "${svc}")"
+    sleep 1
   done
 }
 
@@ -505,16 +544,13 @@ cmd_script() {
     exit 0
   fi
 
+  prepare_images
   up_live
   log_step "vc-script"
-  if ! image="$(latest_vc_script_image)"; then
-    log_error "로컬에 vc-script 이미지가 없습니다."
-    exit 1
-  fi
-  log_info "이미지: ${image}"
+  log_info "이미지: ${VC_SCRIPT_IMAGE}"
   log_info "vc-script 질문에는 DB host 127.0.0.1, DB port 3322, DB Encryption 은 DB_ENCRYPTION_KEY 를 넣으세요."
   docker rm -f vc-script >/dev/null 2>&1 || true
-  run_cmd docker run -it --rm --name vc-script --net=host "${image}"
+  run_cmd docker run -it --rm --name vc-script --net=host --pid=host "${VC_SCRIPT_IMAGE}"
   log_step "script 종료"
 }
 
@@ -664,10 +700,10 @@ run_restore() {
   uncomment_restore
   ensure_restore_dirs
   log_step "restore-sync"
-  run_cmd compose run --rm --no-deps restore-sync \
+  run_cmd compose run --rm --no-deps --pull never restore-sync \
     restore --start="${FIX_SYNC_START}" --end="${FIX_SYNC_END}" --min-interval="${FIX_MIN_INTERVAL}"
   log_step "restore-observer"
-  run_cmd compose run --rm --no-deps restore-observer \
+  run_cmd compose run --rm --no-deps --pull never restore-observer \
     observe restore --start="${FIX_OBS_START}" --end="${FIX_OBS_END}"
 }
 
@@ -731,6 +767,10 @@ cmd_fix_defect() {
   fi
 
   save_fix_state
+
+  if [[ "${FIX_RESTORE}" == "yes" || "${FIX_LIVE}" == "yes" ]]; then
+    prepare_images
+  fi
 
   if [[ "${FIX_RESTORE}" == "yes" ]]; then
     run_restore
