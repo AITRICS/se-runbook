@@ -42,7 +42,7 @@ usage() {
 
 시작 시 시뮬레이션을 보여 준 뒤에 진행한다.
 실행은 tmux 세션 ${TMUX_SESSION} 안에서 하고, 끝나면 그 세션을 종료한다.
-작업 경로: ${DEPLOY_HOME}/<병원폴더>
+작업 경로: ${DEPLOY_HOME}/<병원이름>-v223
 기준 템플릿: ${EXAMPLE_DIR_NAME}
 EOF
 }
@@ -55,7 +55,7 @@ ${BOLD}VitalCare 2.2.3 업그레이드 실행 시뮬레이션${NC}
 이 스크립트는 pre.sh 다음에 쓴다. 작업은 tmux 세션 ${TMUX_SESSION} 안에서 진행되고, 끝나면 세션이 닫힌다.
 
 기준은 vc-deploy 의 ${EXAMPLE_DIR_NAME} 이다.
-병원 폴더는 ${DEPLOY_HOME}/<병원이름> 으로 복사한다.
+병원 폴더와 compose project 이름은 ${DEPLOY_HOME}/<병원이름>-v223 이다.
 compose 가 ../mysql, ../vitalcare 를 include 하므로 폴더는 저장소 안에 둬야 한다.
 
 [initiate]
@@ -66,13 +66,14 @@ compose 가 ../mysql, ../vitalcare 를 include 하므로 폴더는 저장소 안
        create-certificate-file.sh
        download-bat-file.sh
   5. 환경변수를 하나씩 묻는다. 기본값은 괄호 안이다.
-       HOST_NAME, CONFIG_DIR 은 병원 폴더 이름으로 넣는다.
+       HOST_NAME 은 병원 이름, CONFIG_DIR 은 ../<병원이름>-v223/configs 로 넣는다.
        .env  VC_SYNC_IMAGE_TAG (${DEFAULT_SYNC_TAG})
        envs/db-encrypt.env  DB_ENCRYPTION_KEY, DB_ENCRYPTION_KEY_HASH
          다른 환경변수와 같이 화면에 보이며, 파일에 값이 있으면 기본값으로 보여 준다.
        api 또는 view
          api  : envs/sync.env 의 API_BASE_URL
          view : VCSYNC_EMR_HOST, PORT, DB, SERVICE, USER, PASSWORD
+       envs/sync.env  VCSYNC_SYNC_DNR (true 또는 false)
   6. docker-compose.yaml 의 restore-sync, restore-observer 주석을 해제한다.
   7. sync 와 observer 는 띄우지 않고, 아래 순서대로 올린다.
        mysql 은 healthy 가 된 뒤에 다음으로 넘어간다.
@@ -142,11 +143,16 @@ run_cmd() {
 
 ask_hospital() {
   local current="${1:-}"
-  HOSPITAL="$(prompt_required "병원 폴더 이름 (영문)" "${current}")"
-  HOSPITAL="$(normalize_hospital "${HOSPITAL}")"
-  validate_hospital "${HOSPITAL}"
-  STACK_DIR="${DEPLOY_HOME}/${HOSPITAL}"
-  PROJECT_NAME="${HOSPITAL}"
+  local name
+  name="$(prompt_required "병원 이름 (영문)" "${current}")"
+  name="$(normalize_hospital "${name}")"
+  if [[ "${name}" == *-v223 ]]; then
+    name="${name%-v223}"
+  fi
+  validate_hospital "${name}"
+  HOSPITAL="${name}"
+  STACK_DIR="${DEPLOY_HOME}/${HOSPITAL}-v223"
+  PROJECT_NAME="${HOSPITAL}-v223"
 }
 
 require_stack() {
@@ -201,17 +207,17 @@ configure_env() {
   local env_file="${STACK_DIR}/.env"
   local encrypt_file="${STACK_DIR}/envs/db-encrypt.env"
   local sync_file="${STACK_DIR}/envs/sync.env"
-  local sync_tag key key_hash mode api_url
+  local sync_tag key key_hash mode api_url sync_dnr
   local emr_host emr_port emr_db emr_service emr_user emr_password
 
   [[ "${RESET_ENV}" -eq 1 ]] || return 0
 
   log_step "환경변수"
-  echo "HOST_NAME 과 CONFIG_DIR 은 병원 폴더 이름으로 넣습니다."
+  echo "HOST_NAME 은 병원 이름, CONFIG_DIR 은 병원 폴더로 넣습니다."
   echo "  HOST_NAME=${HOSPITAL}"
-  echo "  CONFIG_DIR=../${HOSPITAL}/configs"
+  echo "  CONFIG_DIR=../${HOSPITAL}-v223/configs"
   set_kv "${env_file}" "HOST_NAME" "${HOSPITAL}"
-  set_kv "${env_file}" "CONFIG_DIR" "../${HOSPITAL}/configs"
+  set_kv "${env_file}" "CONFIG_DIR" "../${HOSPITAL}-v223/configs"
 
   sync_tag="$(get_kv "${env_file}" "VC_SYNC_IMAGE_TAG")"
   sync_tag="${sync_tag:-${DEFAULT_SYNC_TAG}}"
@@ -265,12 +271,24 @@ configure_env() {
   fi
 
   echo
+  echo "envs/sync.env 의 VCSYNC_SYNC_DNR 을 설정합니다."
+  sync_dnr="$(get_kv "${sync_file}" "VCSYNC_SYNC_DNR")"
+  if [[ "${sync_dnr}" == "true" || "${sync_dnr}" == "false" ]]; then
+    echo "현재 값: ${sync_dnr}"
+  fi
+  ask_choice "VCSYNC_SYNC_DNR" "true" "false"
+  sync_dnr="${CHOICE_LABEL}"
+  set_kv "${sync_file}" "VCSYNC_SYNC_DNR" "${sync_dnr}"
+  chmod 600 "${sync_file}"
+
+  echo
   echo "----------------------------------------"
   echo "  병원 폴더          ${STACK_DIR}"
   echo "  HOST_NAME          ${HOSPITAL}"
-  echo "  CONFIG_DIR         ../${HOSPITAL}/configs"
+  echo "  CONFIG_DIR         ../${HOSPITAL}-v223/configs"
   echo "  VC_SYNC_IMAGE_TAG  ${sync_tag}"
   echo "  연동               ${mode}"
+  echo "  VCSYNC_SYNC_DNR    ${sync_dnr}"
   if [[ "${mode}" == "api" ]]; then
     echo "  API_BASE_URL       ${api_url}"
   else
@@ -436,6 +454,9 @@ cmd_initiate() {
   local svc
   RESET_ENV=1
   ask_hospital
+  echo
+  echo "작업 폴더  ${STACK_DIR}"
+  echo "compose    ${PROJECT_NAME}"
   echo
   echo "올릴 컨테이너 (sync, observer 제외)"
   for svc in "${UP_SERVICES[@]}"; do

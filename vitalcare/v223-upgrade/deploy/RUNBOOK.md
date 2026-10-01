@@ -33,7 +33,7 @@ FAIL 이 있으면 종료 코드 1 이다.
 
 인자가 없으면 메뉴에서 고른다.
 
-작업 디렉터리는 `/home/aitrics/vc-deploy-v223/<병원폴더>` 다. compose 가 `../mysql`, `../vitalcare` 를 include 하므로 병원 폴더는 이 저장소 안에 둔다.
+작업 디렉터리와 compose project 이름은 `/home/aitrics/vc-deploy-v223/<병원이름>-v223` 이다. 입력한 병원 이름 그대로 쓰면 기존 compose 프로젝트와 겹친다. compose 가 `../mysql`, `../vitalcare` 를 include 하므로 병원 폴더는 이 저장소 안에 둔다.
 
 ### initiate
 
@@ -44,6 +44,7 @@ FAIL 이 있으면 종료 코드 1 이다.
    - `.env` 의 `VC_SYNC_IMAGE_TAG` 기본값은 `vc-v2.2.3-latest`
    - `envs/db-encrypt.env` 의 `DB_ENCRYPTION_KEY`, `DB_ENCRYPTION_KEY_HASH` 는 다른 환경변수와 같이 입력한다. 파일에 값이 있으면 기본값으로 보여 준다.
    - api 이면 `API_BASE_URL`, view 이면 `VCSYNC_EMR_*`
+   - `envs/sync.env` 의 `VCSYNC_SYNC_DNR` 은 `true` 또는 `false` 로 묻는다.
 5. `restore-sync`, `restore-observer` 주석을 해제한다.
 6. sync 와 observer 를 제외하고 순서대로 올린다. mysql 은 healthy 가 된 뒤에 다음으로 넘어간다.
    `mysql`, `sync-migration`, `backend-migration`, `rabbitmq`, `backend`, `frontend`, `admin`, `mongodb`, `vcsm-kotlin`, `dlq-manager`, `scoring-service`, `screening-service`

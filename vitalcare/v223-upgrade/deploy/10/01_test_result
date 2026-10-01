@@ -21,3 +21,20 @@ aws login --remote -> url 출력 -> 해당 url로 접속 -> 400 error 라면 chr
 db encryption key 입력할 때 비밀번호 입력처럼 하는 거 너무 불편함. 그냥 똑같은 환경변수로 취급하게 바꿀 필요 있음
 
 
+아 지금 dc pull을 한번에 받는 게 아니라 컨테이너 하나씩 실행할 때마다 하나씩 받네
+
+
+26859bb0 Pull complete                                                                                                                                                                            13.5s
+   ✔ 03c8ed54e50b Pull complete                                                                                                                                                                            13.5s
+   ✔ 5d6967a00e87 Pull complete                                                                                                                                                                            13.5s
+[+] Running 0/0
+ ⠋ Network himchan_mokdong_shared_network  Creating                                                                                                                                                         0.0s
+[+] Running 2/2d orphan containers ([restore-scoring-manager-v1.4.4-h2 himchan_mokdong-one-time-job-3-1 himchan_mokdong-one-time-job-2-1]) for this project. If you removed or renamed this service in your compo ✔ Network himchan_mokdong_shared_network  Created                                                                                                                                                          0.1s
+ ✔ Container mysql-v223                    Started                                                                                                                                                          0.4s
+[INFO] mysql-v223 healthy
+
+
+병원폴더 만들 때 v223 안붙여서 발생한 에러
+WARN[0023] Found orphan containers ([restore-scoring-manager-v1.4.4-h2 himchan_mokdong-one-time-job-3-1 himchan_mokdong-one-time-job-2-1]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up.
+
+
