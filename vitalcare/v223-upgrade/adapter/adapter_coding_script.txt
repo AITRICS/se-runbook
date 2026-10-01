@@ -1,0 +1,114 @@
+old_adapter=
+new_adapter=
+old_branch=
+hospital_folder=
+new_base_branch=prod/v2.1.5
+vch_number=
+new_branch_suffix=v215
+template=new_demo_api
+extra_condition=
+
+old_adapter 는 로직을 가져올 과거 어댑터다.
+new_adapter 는 로직을 이관할 새 버전 어댑터다.
+template 은 new_demo_api 또는 new_demo_view 중 하나만 적는다.
+작업 브랜치 이름은 VCH-{vch_number}-{hospital_folder}-{new_branch_suffix} 로 만든다.
+extra_condition 이 비어 있으면 추가 조건은 없다.
+
+다음 VC adapter 로직 이관 작업을 수행해줘.
+위에 적은 old_adapter 의 병원 연동 로직을 new_adapter 로 이관한다.
+위에 적은 입력값을 그대로 사용한다.
+
+[과거 어댑터]
+
+대상은 위에 적은 old_adapter 다.
+
+1. 위에 적은 old_branch 브랜치로 이동한다.
+
+2. 위에 적은 hospital_folder 병원 폴더의 기존 연동 로직을 확인한다.
+
+
+[새 버전 어댑터]
+
+대상은 위에 적은 new_adapter 다.
+
+1. 위에 적은 new_base_branch 브랜치를 checkout 한다.
+
+2. checkout 후 다음 이름으로 작업 브랜치를 생성하거나 이동한다.
+
+VCH-{vch_number}-{hospital_folder}-{new_branch_suffix}
+
+3. 위에 적은 template 을 복사해서 copy 폴더를 만든다.
+
+
+[로직 이관]
+
+old_adapter 의 해당 병원 폴더에 있는 연동 로직을 분석한 뒤,
+new_adapter 의 copy 폴더 구조에 맞게 이관한다.
+
+기존 new_adapter 의 구조와 패턴을 최대한 유지하고,
+필요한 병원별 로직만 반영한다.
+
+불필요한 리팩터링이나 작업 범위 밖 변경은 하지 않는다.
+
+
+[기본 조건]
+
+- vitalsign은 위에 적은 template 에 있는 observation_code_dict 에 정의된 항목만 연동할 것.
+- old_adapter 에 존재하더라도 observation_code_dict 에 없는 vitalsign은 연동하지 않을 것.
+
+- 다음 함수들에 대해서 old_adapter 와 new_adapter 양쪽에 테스트 코드를 작성할 것.
+
+  - get_current_hospitalization
+  - get_hospitalization
+  - get_patient / get_patients
+  - get_encounters
+  - get_latest_deptdocs / get_latest_stays
+  - get_all_icu_records / get_all_alt_icu_records
+  - get_vitalsigns_on_date
+
+- 각 함수별로 기존 old_adapter 와 이관된 new_adapter 를 동일한 조건으로 실행하여 결과를 비교할 것.
+- 반환 데이터의 내용이 동일한지 확인할 것.
+
+- 위 함수 목록 중 old_adapter 에서 구현되어 있지 않은 함수가 있다면:
+  - 해당 함수는 테스트하지 말 것.
+  - 테스트를 위해 임의로 구현하지 말 것.
+  - 작업 완료 보고에서 "과거 어댑터에 구현되어 있지 않아 테스트하지 않음"이라고 명시할 것.
+
+- old_adapter 와 new_adapter 의 테스트 결과가 다를 경우 임의로 넘어가지 말 것.
+- 어떤 함수에서 어떤 차이가 발생했는지 구체적으로 확인하고 보고할 것.
+
+- 테스트를 위해 임시로 생성하거나 수정한 테스트 파일은 검증 완료 후 반드시 삭제할 것.
+
+
+[추가 조건]
+
+- 위에 적은 extra_condition 을 따른다. 비어 있으면 이 섹션은 무시한다.
+
+
+[작업 방식]
+
+실제 코드 수정 전에 먼저 기존 코드를 분석하고 다음 내용을 짧게 정리할 것.
+
+1. old_adapter 에서 확인된 주요 연동 로직
+2. new_adapter 에서 대응되는 구조
+3. 실제 이관할 로직
+4. 이관 대상 vitalsign
+5. 제외 대상 vitalsign
+
+위 분석 이후 실제 코드 수정을 진행할 것.
+
+
+[작업 완료 후]
+
+다음 기준으로 결과를 정리해줘.
+
+- 변경한 파일
+- 이관한 로직
+- 제외한 로직
+- 이관된 vitalsign 항목
+- 제외된 vitalsign 항목
+- 함수별 old_adapter / new_adapter 테스트 결과
+- 과거 어댑터에 구현되어 있지 않아 테스트하지 않은 함수
+- old_adapter 와 new_adapter 결과가 일치하지 않은 함수와 차이점
+- 테스트용 임시 파일 삭제 여부
+- 추가 확인이 필요한 사항
