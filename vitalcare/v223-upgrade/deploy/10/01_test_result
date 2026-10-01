@@ -1,0 +1,19 @@
+###################pre######################
+
+[ERROR] FAIL  git clone 에 쓸 원격 저장소에 접근하지 못했습니다: https://github.com/AITRICS/vc-deploy.git
+    fatal: could not read Username for 'https://github.com': terminal prompts disabled
+
+aws login을 이 단계에서 해주진 않네
+아 예전에 했던 aws login 바꾸는 것도 확인이 필요함
+https://aitrics.slack.com/archives/C06H98JK597/p1782096967886239?thread_ts=1779947938.233249&cid=C06H98JK597
+
+
+aws login --remote -> url 출력 -> 해당 url로 접속 -> 400 error 라면 chrome secret 창에서 해당 url 시도하면 정상 로그인 됨
+
+
+############### run initiate ####################
+
+병원 폴더 이름 (영문): himchan_mokdong
+[ERROR] 병원 폴더 이름은 영문 소문자, 숫자, 하이픈만 가능합니다: himchan_mokdong
+
+어라 병원폴더 이름에다가 _ 못 쓰게 막아놨네

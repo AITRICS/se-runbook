@@ -126,13 +126,13 @@ prompt_secret() {
 }
 
 normalize_hospital() {
-  printf '%s\n' "$1" | tr '[:upper:]' '[:lower:]' | tr -d ' '
+  printf '%s\n' "$1"
 }
 
 validate_hospital() {
   local name="$1"
-  if [[ ! "${name}" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
-    log_error "병원 폴더 이름은 영문 소문자, 숫자, 하이픈만 가능합니다: ${name}"
+  if [[ "${name}" =~ [A-Z] ]]; then
+    log_error "병원 폴더 이름에 영문 대문자는 쓸 수 없습니다: ${name}"
     exit 1
   fi
 }
