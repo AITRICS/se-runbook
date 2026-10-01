@@ -38,12 +38,15 @@ FAIL 이 있으면 종료 코드 1 이다.
 ### initiate
 
 1. `vc-deploy` 가 없으면 clone 하고, `upgrade-example-2.2.3` 을 병원 폴더로 복사한다.
-2. 환경변수를 하나씩 묻는다. 기본값은 괄호로 보여 준다.
+2. 병원 폴더에서 `sudo bash ./init-deploy-settings.sh` 로 볼륨 디렉터리를 만든다.
+3. `create-certificate-file.sh`, `download-bat-file.sh` 를 순서대로 실행한다.
+4. 환경변수를 하나씩 묻는다. 기본값은 괄호로 보여 준다.
    - `.env` 의 `VC_SYNC_IMAGE_TAG` 기본값은 `vc-v2.2.3-latest`
    - `envs/db-encrypt.env` 의 `DB_ENCRYPTION_KEY`, `DB_ENCRYPTION_KEY_HASH` 는 기본값을 보여 주지 않는다.
    - api 이면 `API_BASE_URL`, view 이면 `VCSYNC_EMR_*`
-3. `restore-sync`, `restore-observer` 주석을 해제한다.
-4. sync 와 observer 를 제외한 컨테이너를 순서대로 올린다.
+5. `restore-sync`, `restore-observer` 주석을 해제한다.
+6. sync 와 observer 를 제외하고 순서대로 올린다. mysql 은 healthy 가 된 뒤에 다음으로 넘어간다.
+   `mysql`, `sync-migration`, `backend-migration`, `rabbitmq`, `backend`, `frontend`, `admin`, `mongodb`, `vcsm-kotlin`, `dlq-manager`, `scoring-service`, `screening-service`
 
 ### script
 

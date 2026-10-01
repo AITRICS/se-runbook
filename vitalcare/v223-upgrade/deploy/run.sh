@@ -19,18 +19,17 @@ MODE=""
 
 UP_SERVICES=(
   mysql
-  mongodb
-  rabbitmq
-  backend-migration
   sync-migration
+  backend-migration
+  rabbitmq
   backend
   frontend
   admin
-  nginx
-  scoring-service
+  mongodb
   vcsm-kotlin
-  screening-service
   dlq-manager
+  scoring-service
+  screening-service
 )
 
 usage() {
@@ -62,7 +61,11 @@ compose 가 ../mysql, ../vitalcare 를 include 하므로 폴더는 저장소 안
 [initiate]
   1. ${DEPLOY_HOME} 가 없으면 ${VC_DEPLOY_REPO} 를 clone 한다. 있으면 재사용한다.
   2. ${EXAMPLE_DIR_NAME} 을 병원 폴더로 복사한다.
-  3. 환경변수를 하나씩 묻는다. 기본값은 괄호 안이다.
+  3. sudo 로 init-deploy-settings.sh 를 돌려 볼륨 디렉터리를 만든다.
+  4. 인증서 관련 스크립트를 병원 폴더에서 순서대로 실행한다.
+       create-certificate-file.sh
+       download-bat-file.sh
+  5. 환경변수를 하나씩 묻는다. 기본값은 괄호 안이다.
        HOST_NAME, CONFIG_DIR 은 병원 폴더 이름으로 넣는다.
        .env  VC_SYNC_IMAGE_TAG (${DEFAULT_SYNC_TAG})
        envs/db-encrypt.env  DB_ENCRYPTION_KEY, DB_ENCRYPTION_KEY_HASH
@@ -70,9 +73,9 @@ compose 가 ../mysql, ../vitalcare 를 include 하므로 폴더는 저장소 안
        api 또는 view
          api  : envs/sync.env 의 API_BASE_URL
          view : VCSYNC_EMR_HOST, PORT, DB, SERVICE, USER, PASSWORD
-  4. sudo 로 init-deploy-settings.sh 를 돌려 볼륨 디렉터리를 만든다.
-  5. docker-compose.yaml 의 restore-sync, restore-observer 주석을 해제한다.
-  6. sync 와 observer 는 띄우지 않고, 아래 순서대로 올린다.
+  6. docker-compose.yaml 의 restore-sync, restore-observer 주석을 해제한다.
+  7. sync 와 observer 는 띄우지 않고, 아래 순서대로 올린다.
+       mysql 은 healthy 가 된 뒤에 다음으로 넘어간다.
 $(printf '       - %s\n' "${UP_SERVICES[@]}")
 
 [script]
@@ -305,14 +308,36 @@ uncomment_restore() {
   log_info "주석을 해제했습니다: ${file}"
 }
 
-prepare_volumes() {
-  local script="${STACK_DIR}/init-deploy-settings.sh"
-  log_step "볼륨 디렉터리"
-  if [[ ! -f "${script}" ]]; then
-    log_error "없습니다: ${script}"
+run_hospital_script() {
+  local script="$1"
+  local path="${STACK_DIR}/${script}"
+  log_step "${script}"
+  if [[ ! -f "${path}" ]]; then
+    log_error "없습니다: ${path}"
     exit 1
   fi
-  run_cmd sudo bash "${script}"
+  (
+    cd "${STACK_DIR}"
+    run_cmd bash "./${script}"
+  )
+}
+
+prepare_certificates() {
+  log_step "인증서 관련 세팅"
+  run_hospital_script "create-certificate-file.sh"
+  run_hospital_script "download-bat-file.sh"
+}
+
+prepare_volumes() {
+  log_step "볼륨 디렉터리"
+  if [[ ! -f "${STACK_DIR}/init-deploy-settings.sh" ]]; then
+    log_error "없습니다: ${STACK_DIR}/init-deploy-settings.sh"
+    exit 1
+  fi
+  (
+    cd "${STACK_DIR}"
+    run_cmd sudo bash "./init-deploy-settings.sh"
+  )
 }
 
 wait_healthy() {
@@ -423,12 +448,9 @@ cmd_initiate() {
   require_cmd docker
   ensure_repo
   copy_hospital_dir
-  configure_env
-  if ! ask_yes_no "이어서 볼륨을 만들고 컨테이너를 올릴까요?" "y"; then
-    log_info "컨테이너는 올리지 않고 종료합니다."
-    exit 0
-  fi
   prepare_volumes
+  prepare_certificates
+  configure_env
   uncomment_restore
   up_stack_without_sync
   log_step "initiate 종료"

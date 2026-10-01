@@ -16,4 +16,8 @@ aws login --remote -> url 출력 -> 해당 url로 접속 -> 400 error 라면 chr
 병원 폴더 이름 (영문): himchan_mokdong
 [ERROR] 병원 폴더 이름은 영문 소문자, 숫자, 하이픈만 가능합니다: himchan_mokdong
 
-어라 병원폴더 이름에다가 _ 못 쓰게 막아놨네
+어라 병원폴더 이름에다가 _ 못 쓰게 막아놨네 -> 이건 고쳐놨음 대문자만 막도록
+
+db encryption key 입력할 때 비밀번호 입력처럼 하는 거 너무 불편함. 그냥 똑같은 환경변수로 취급하게 바꿀 필요 있음
+
+
