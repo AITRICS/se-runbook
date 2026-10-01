@@ -42,7 +42,7 @@ FAIL 이 있으면 종료 코드 1 이다.
 3. `create-certificate-file.sh`, `download-bat-file.sh` 를 순서대로 실행한다.
 4. 환경변수를 하나씩 묻는다. 기본값은 괄호로 보여 준다.
    - `.env` 의 `VC_SYNC_IMAGE_TAG` 기본값은 `vc-v2.2.3-latest`
-   - `envs/db-encrypt.env` 의 `DB_ENCRYPTION_KEY`, `DB_ENCRYPTION_KEY_HASH` 는 기본값을 보여 주지 않는다.
+   - `envs/db-encrypt.env` 의 `DB_ENCRYPTION_KEY`, `DB_ENCRYPTION_KEY_HASH` 는 다른 환경변수와 같이 입력한다. 파일에 값이 있으면 기본값으로 보여 준다.
    - api 이면 `API_BASE_URL`, view 이면 `VCSYNC_EMR_*`
 5. `restore-sync`, `restore-observer` 주석을 해제한다.
 6. sync 와 observer 를 제외하고 순서대로 올린다. mysql 은 healthy 가 된 뒤에 다음으로 넘어간다.

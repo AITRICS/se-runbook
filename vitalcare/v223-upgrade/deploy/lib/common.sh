@@ -185,11 +185,6 @@ comment_kv() {
   mv "${tmp}" "${file}"
 }
 
-mask_len() {
-  local value="$1"
-  printf '입력됨 (%s자)\n' "${#value}"
-}
-
 ensure_tmux() {
   [[ -n "${V223_IN_TMUX:-}" ]] && return 0
 

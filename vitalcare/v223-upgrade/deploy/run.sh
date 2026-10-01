@@ -69,7 +69,7 @@ compose 가 ../mysql, ../vitalcare 를 include 하므로 폴더는 저장소 안
        HOST_NAME, CONFIG_DIR 은 병원 폴더 이름으로 넣는다.
        .env  VC_SYNC_IMAGE_TAG (${DEFAULT_SYNC_TAG})
        envs/db-encrypt.env  DB_ENCRYPTION_KEY, DB_ENCRYPTION_KEY_HASH
-         값은 화면에 남지 않고, 기본값도 보여 주지 않는다.
+         다른 환경변수와 같이 화면에 보이며, 파일에 값이 있으면 기본값으로 보여 준다.
        api 또는 view
          api  : envs/sync.env 의 API_BASE_URL
          view : VCSYNC_EMR_HOST, PORT, DB, SERVICE, USER, PASSWORD
@@ -219,9 +219,11 @@ configure_env() {
   set_kv "${env_file}" "VC_SYNC_IMAGE_TAG" "${sync_tag}"
 
   echo
-  echo "envs/db-encrypt.env  기본값은 보여 주지 않습니다. 입력은 화면에 표시되지 않습니다."
-  key="$(prompt_secret "DB_ENCRYPTION_KEY")"
-  key_hash="$(prompt_secret "DB_ENCRYPTION_KEY_HASH")"
+  echo "envs/db-encrypt.env"
+  key="$(get_kv "${encrypt_file}" "DB_ENCRYPTION_KEY")"
+  key_hash="$(get_kv "${encrypt_file}" "DB_ENCRYPTION_KEY_HASH")"
+  key="$(prompt_required "DB_ENCRYPTION_KEY" "${key}")"
+  key_hash="$(prompt_required "DB_ENCRYPTION_KEY_HASH" "${key_hash}")"
   set_kv "${encrypt_file}" "DB_ENCRYPTION_KEY" "${key}"
   set_kv "${encrypt_file}" "DB_ENCRYPTION_KEY_HASH" "${key_hash}"
   chmod 600 "${encrypt_file}"
@@ -274,8 +276,8 @@ configure_env() {
   else
     echo "  EMR                ${emr_user}@${emr_host}:${emr_port}/${emr_db}"
   fi
-  echo "  DB_ENCRYPTION_KEY       $(mask_len "${key}")"
-  echo "  DB_ENCRYPTION_KEY_HASH  $(mask_len "${key_hash}")"
+  echo "  DB_ENCRYPTION_KEY       ${key}"
+  echo "  DB_ENCRYPTION_KEY_HASH  ${key_hash}"
   echo "----------------------------------------"
 }
 
