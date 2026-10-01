@@ -86,7 +86,11 @@ $(printf '       - %s\n' "${UP_SERVICES[@]}")
 
 [script]
   1. observer 를 live 로 올린다.  compose 명령은 \`observe run\`
+       로그를 지켜보다가 error 가 보이면 observer 와 sync 를 내리고 스크립트를 중단한다.
+       \`observer run end\` 가 나오면 다음으로 넘어간다.
   2. sync 를 live 로 올린다.      compose 명령은 \`sync\`
+       로그를 지켜보다가 error 가 보이면 observer 와 sync 를 내리고 스크립트를 중단한다.
+       \`sync end :\` 가 나오면 다음으로 넘어간다.
   3. vc-script 를 대화형으로 실행한다.
        docker run -it --rm --name vc-script --net=host --pid=host ${VC_SCRIPT_IMAGE}
        DB host 127.0.0.1, DB port 3322 (mysql-v223)
@@ -529,14 +533,70 @@ up_live() {
   done
 }
 
+watch_live_logs() {
+  local name="$1"
+  local since="$2"
+  local done_pattern="$3"
+  local timeout_sec=2700
+  local start now logs printed=0 status matched
+  start="$(date +%s)"
+  log_step "${name} 로그"
+  log_info "error 가 보이면 중단합니다. 넘어가는 로그: ${done_pattern}"
+  while true; do
+    logs="$(docker logs --since "${since}" "${name}" 2>&1 || true)"
+    if [[ -n "${logs}" ]]; then
+      printf '%s\n' "${logs}" | awk -v n="${printed}" 'NR > n { print }'
+      printed="$(printf '%s\n' "${logs}" | wc -l | tr -d ' ')"
+    fi
+    if matched="$(printf '%s\n' "${logs}" | grep -i 'error' || true)" && [[ -n "${matched}" ]]; then
+      log_error "${name} 로그에 error 가 있습니다. observer 와 sync 를 내리고 중단합니다."
+      printf '%s\n' "${matched}" >&2
+      stop_live
+      exit 1
+    fi
+    if printf '%s\n' "${logs}" | grep -F -q -- "${done_pattern}"; then
+      log_info "${name} 초기 기동 로그를 확인했습니다."
+      return 0
+    fi
+    status="$(docker inspect -f '{{.State.Status}}' "${name}" 2>/dev/null || echo missing)"
+    if [[ "${status}" != "running" ]]; then
+      log_error "${name} 가 running 이 아닙니다 (status=${status})."
+      exit 1
+    fi
+    now="$(date +%s)"
+    if (( now - start >= timeout_sec )); then
+      log_error "${name} 로그에서 ${done_pattern} 를 ${timeout_sec}초 안에 찾지 못했습니다."
+      exit 1
+    fi
+    sleep 2
+  done
+}
+
+stop_live() {
+  log_step "observer / sync 중지"
+  compose stop observer sync
+}
+
+start_live() {
+  local svc="$1"
+  local done_pattern="$2"
+  local name since
+  name="$(container_name "${svc}")"
+  since="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  log_step "${svc} live"
+  run_cmd compose up -d --no-deps --pull never "${svc}"
+  wait_running "${name}"
+  sleep 1
+  watch_live_logs "${name}" "${since}" "${done_pattern}"
+}
+
 cmd_script() {
-  local image
   ask_hospital
   require_stack
   require_cmd docker
   echo
-  echo "  observer live  (observe run)"
-  echo "  sync live      (sync)"
+  echo "  observer live  (observe run)  로그에 error 가 있으면 observer, sync 를 내리고 중단"
+  echo "  sync live      (sync)         로그에 error 가 있으면 observer, sync 를 내리고 중단"
   echo "  vc-script      host 네트워크, DB 127.0.0.1:3322"
   echo
   if ! ask_yes_no "script 를 진행할까요?" "y"; then
@@ -545,7 +605,8 @@ cmd_script() {
   fi
 
   prepare_images
-  up_live
+  start_live observer "observer run end"
+  start_live sync "sync end :"
   log_step "vc-script"
   log_info "이미지: ${VC_SCRIPT_IMAGE}"
   log_info "vc-script 질문에는 DB host 127.0.0.1, DB port 3322, DB Encryption 은 DB_ENCRYPTION_KEY 를 넣으세요."

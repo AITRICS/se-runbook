@@ -52,7 +52,7 @@ FAIL 이 있으면 종료 코드 1 이다.
 
 ### script
 
-observer live (`observe run`), sync live (`sync`), 그다음 `dev/vc-script:v2.2.0` 을 `--net=host --pid=host` 로 실행한다. MySQL 호스트 포트는 `3322` 다.
+observer live (`observe run`) 로그를 보다가 `error` 가 있으면 observer 와 sync 를 내리고 중단한다. `observer run end` 가 나오면 sync live (`sync`) 로 넘어가고, sync 로그도 같이 본다. `sync end :` 가 나오면 `dev/vc-script:v2.2.0` 을 `--net=host --pid=host` 로 실행한다. MySQL 호스트 포트는 `3322` 다.
 
 ### fix-defect
 
